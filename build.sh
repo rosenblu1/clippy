@@ -26,7 +26,7 @@ CHIP_TYPE=`sysctl -n machdep.cpu.brand_string`
 if [[ $CHIP_TYPE == *"Apple M"* ]]; then
     CHIP_NAME="Apple Silicon"
 else
-    CHIP_NAME="Intel Chip"
+    CHIP_NAME="Universal2"
 fi
 INSTALLER_NAME=$CHIP_NAME" Clippy-Installer"
 
