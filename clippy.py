@@ -1,7 +1,7 @@
 #!/opt/homebrew/bin/python3
 # BUILD:
 # $ ./build.sh
-#  !! current directory should have an assets folder with:
+#  !! current directory should have an assets/ folder with:
 #  !! AppIcon.icns, cup_10_pt.svg, installer_background.png
 # universal2 binary:
 #   https://github.com/ronaldoussoren/py2app/issues/450#issuecomment-1135239969
@@ -363,7 +363,7 @@ class ClipDataManager:
         self.id_dispatch = id_dispatch
         # hook into AppKit to see if we need to run a full check
         self.change_tracker_obj = NSPasteboard.generalPasteboard()
-        self.change_count = self.change_tracker_obj.changeCount() + 1
+        self.change_count = self.change_tracker_obj.changeCount()
         # buffers for looping
         self.prev_txt_clip, self.cur_txt_clip = None, None
         self.prev_img_clip, self.cur_img_clip = None, None
@@ -772,13 +772,12 @@ def heartbeat(app: ClippyApp):
 
         if app.clip_manager.has_change_count_mismatch():
             app.clip_manager.update_change_count()
-
             if PROGRAM_CLIP_SET_EVENT.is_set():
                 app.clip_manager.update_buffers
                 PROGRAM_CLIP_SET_EVENT.clear()
                 continue
-
             try:
+                print("trying for new")
                 if new_item := app.clip_manager.get_new_item():
                     app.add_clip_item_to_top(new_item)
             except BaseException as e:
