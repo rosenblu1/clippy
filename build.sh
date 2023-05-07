@@ -21,14 +21,7 @@ then
     exit 1
 fi
 
-# checking cpu chip type to name installer
-CHIP_TYPE=`sysctl -n machdep.cpu.brand_string`
-if [[ $CHIP_TYPE == *"Apple M"* ]]; then
-    CHIP_NAME="Apple Silicon"
-else
-    CHIP_NAME="Universal2"
-fi
-INSTALLER_NAME=$CHIP_NAME" Clippy-Installer"
+INSTALLER_NAME="Clippy-Installer"
 
 # clean old dmgs and cache
 test -f "$INSTALLER_NAME".dmg && rm "$INSTALLER_NAME".dmg

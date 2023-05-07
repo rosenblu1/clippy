@@ -15,7 +15,7 @@ OPTIONS = {
 setup(
     app=APP,
     name="Clippy",
-    version="0.0.9",
+    version="0.1.0",
     author="Eddie Rosenblum",
     author_email="erosenblum36@gmail.com",
     # data_files=DATA_FILES,

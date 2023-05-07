@@ -1,16 +1,19 @@
-#!/opt/homebrew/bin/python3
+#!/Library/Frameworks/Python.framework/Versions/3.11/bin/python3
 # BUILD:
 # $ ./build.sh
 #  !! current directory should have an assets/ folder with:
 #  !! AppIcon.icns, cup_10_pt.svg, installer_background.png
-# universal2 binary:
-#   https://github.com/ronaldoussoren/py2app/issues/450#issuecomment-1135239969
 # login item:
 #   https://github.com/RhetTbull/textinator/blob/main/src/loginitems.py
 
+# TODO: could change invisibletringcounter to a generator func, check before to ensure not taken? then don't pickle
+# then id dispatch could be a func in clipdatamanager and return tuple of id, id_str
+# when creating clipdatamanager, just calc once the lowest img_id in the cache?
+# don't have log in cache? have to set_seed after unpickling in clippyapp init.
+
 from __future__ import annotations
 
-__version__ = "0.0.9"
+__version__ = "0.1.0"
 import glob
 import logging
 import math
@@ -38,12 +41,12 @@ APP_NAME = "Clippy"
 WORKING_DIR = os.path.dirname(os.path.abspath(__file__))
 CACHE_DIR = f"{WORKING_DIR}/{APP_NAME}Cache"
 APP_MENUBAR_ICON = f"{WORKING_DIR}/assets/cup_10_pt.svg"
-SERIALIZED_FP = f"{CACHE_DIR}/serialized.pickle"
+SERIALIZED_FP = f"{CACHE_DIR}/cached_items.pickle"
 EXEMPT_CACHE_FILETYPES = (".log", ".pickle")
 
 # logging
 LOG_TO_STDOUT = sys.argv is not None and "--stdout" in sys.argv
-LOG_FILE = f"{CACHE_DIR}/{APP_NAME}Log.log"
+LOG_FILE = f"{WORKING_DIR}/{APP_NAME}Log.log"
 CODEX_OPT = ("ascii", "ignore")
 
 # clipboard logic
@@ -575,7 +578,8 @@ class ClippyApp:
         @clip_setter
         def recopy_and_remove(sender: rumps.MenuItem):
             item.recopy()
-            self.add_clip_item_to_top(item)
+            if not item.is_pinned:
+                self.add_clip_item_to_top(item)
 
         return rumps.MenuItem(
             title=item.title,
@@ -777,7 +781,6 @@ def heartbeat(app: ClippyApp):
                 PROGRAM_CLIP_SET_EVENT.clear()
                 continue
             try:
-                print("trying for new")
                 if new_item := app.clip_manager.get_new_item():
                     app.add_clip_item_to_top(new_item)
             except BaseException as e:
