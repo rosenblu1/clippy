@@ -6,11 +6,6 @@
 # login item:
 #   https://github.com/RhetTbull/textinator/blob/main/src/loginitems.py
 
-# TODO: could change invisibletringcounter to a generator func, check before to ensure not taken? then don't pickle
-# then id dispatch could be a func in clipdatamanager and return tuple of id, id_str
-# when creating clipdatamanager, just calc once the lowest img_id in the cache?
-# don't have log in cache? have to set_seed after unpickling in clippyapp init.
-
 from __future__ import annotations
 
 __version__ = "0.1.0"
