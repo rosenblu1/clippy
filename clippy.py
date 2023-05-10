@@ -48,7 +48,9 @@ SERIALIZED_FP = f"{CACHE_DIR}/cached_items.pickle"
 EXEMPT_CACHE_FILETYPES = (".log", ".pickle")
 
 # releases
-GITHUB_LATEST_LINK = "https://github.com/rosenblu1/clippy/releases/latest"
+DIST_LATEST_LINK = "https://github.com/rosenblu1/clippy/releases/latest"
+DIST_DOWNLOAD_ROUTE = "download"
+DIST_INSTALLER_NAME = f"{APP_NAME}-Installer.dmg"
 
 # logging
 LOG_TO_STDOUT = sys.argv is not None and "--stdout" in sys.argv
@@ -111,7 +113,7 @@ def get_newest_app_version() -> str | None:
     _log("attempting to get newest app version")
     try:
         redirect = requests.get(
-            GITHUB_LATEST_LINK, timeout=RISKY_FUNC_CALL_TIME_LIMIT
+            DIST_LATEST_LINK, timeout=RISKY_FUNC_CALL_TIME_LIMIT
         ).url
     except BaseException as e:
         _log(f"exception getting newest app version: {e}")
@@ -517,7 +519,7 @@ class ClippyApp:
 
                         License: {__license__}
                         Newest version at:
-                        {GITHUB_LATEST_LINK}/download/Clippy-Installer.dmg
+                        {DIST_LATEST_LINK}/{DIST_DOWNLOAD_ROUTE}/{DIST_INSTALLER_NAME}
                         """,
         )
 
