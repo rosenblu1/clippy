@@ -6,9 +6,15 @@
 # login item:
 #   https://github.com/RhetTbull/textinator/blob/main/src/loginitems.py
 
+# TODO: if we auto-update (or manually re-download), keep ClippyCache somehow
+
 from __future__ import annotations
 
-__version__ = "0.1.0"
+__version__ = "0.1.1"
+__author__ = "Eddie Rosenblum"
+__contact__ = "yaplore@gmail.com"
+__license__ = "GPLv3"
+
 import glob
 import logging
 import math
@@ -26,6 +32,7 @@ from datetime import datetime
 from functools import partial
 from typing import Any, Callable
 
+import requests
 import richxerox
 import rumps
 from AppKit import NSBundle, NSPasteboard
@@ -36,8 +43,12 @@ APP_NAME = "Clippy"
 WORKING_DIR = os.path.dirname(os.path.abspath(__file__))
 CACHE_DIR = f"{WORKING_DIR}/{APP_NAME}Cache"
 APP_MENUBAR_ICON = f"{WORKING_DIR}/assets/cup_10_pt.svg"
+APP_FINDER_ICON = f"{WORKING_DIR}/assets/AppIcon.icns"
 SERIALIZED_FP = f"{CACHE_DIR}/cached_items.pickle"
 EXEMPT_CACHE_FILETYPES = (".log", ".pickle")
+
+# releases
+GITHUB_LATEST_LINK = "https://github.com/rosenblu1/clippy/releases/latest"
 
 # logging
 LOG_TO_STDOUT = sys.argv is not None and "--stdout" in sys.argv
@@ -83,7 +94,7 @@ def config_script_for_background_use():
     encounters a critical error.
     """
     app_info = NSBundle.mainBundle().infoDictionary()
-    app_info["LSBackgroundOnly"] = "1"
+    app_info["LSUIElement"] = 1
     logging.getLogger("PIL").setLevel(logging.CRITICAL)
 
 
@@ -94,6 +105,20 @@ def config_script_directories():
     if os.path.isdir(CACHE_DIR):
         return
     os.makedirs(CACHE_DIR)
+
+
+def get_newest_app_version() -> str | None:
+    _log("attempting to get newest app version")
+    try:
+        redirect = requests.get(
+            GITHUB_LATEST_LINK, timeout=RISKY_FUNC_CALL_TIME_LIMIT
+        ).url
+    except BaseException as e:
+        _log(f"exception getting newest app version: {e}")
+        return
+    if redirect is None:
+        return
+    return str(redirect).split("/")[-1][1:]
 
 
 def _log(printable: str) -> None:
@@ -174,7 +199,7 @@ class UnreliableFunctionCall:
         def inner_func() -> Any | None:
             return_value = None
             for i in range(self.num_tries):
-                _log(f"try {i+1}/{self.num_tries} for {self.f.__name__}...")
+                _log(f"try {i+1}/{self.num_tries} for {self.f}...")
                 proc = self._spawn_one_proc()
                 start = time.time()
                 proc.join(self.time_per_try)
@@ -472,6 +497,30 @@ class ClippyApp:
         """Adds horizontal menu separator to GUI with key/title provided."""
         self.gui.menu[this_separator_title] = rumps.separator
 
+    def display_about_app(self, sender: rumps.MenuItem):
+        newest_version = get_newest_app_version()
+        if newest_version is None:
+            version_comment = ""
+        elif newest_version == __version__:
+            version_comment = f"You are using the most current release."
+        else:
+            version_comment = f"The most current release is v{newest_version}."
+        _log(f"displaying about info with {version_comment=}")
+        rumps.alert(
+            title=f"{APP_NAME} v{__version__}",
+            icon_path=APP_FINDER_ICON,
+            message=f"""\
+                        {version_comment}
+
+                        Created by: {__author__}
+                        Contact: {__contact__}
+
+                        License: {__license__}
+                        Newest version at:
+                        {GITHUB_LATEST_LINK}/download/Clippy-Installer.dmg
+                        """,
+        )
+
     def setup_main_menu(self):
         """
         Structure of the GUI from top to bottom:
@@ -481,6 +530,7 @@ class ClippyApp:
         <non-pinned items>  (most recent non-pins on top)
         ------------------- (_bottom_bar_separator)
         Clear All           --> [Keep pinned items, Remove everything]
+        About
         Quit Clippy
         """
         self._add_bar_separator(self._gui_placement_key)
@@ -503,6 +553,14 @@ class ClippyApp:
             )
         )
         self.gui.menu.update(clear_button_anchor)
+
+        # about button
+        self.gui.menu.update(
+            rumps.MenuItem(
+                title="About",
+                callback=self.display_about_app,
+            )
+        )
 
         # quit button
         self.gui.menu.update(

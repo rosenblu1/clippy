@@ -1,4 +1,8 @@
 altgraph==0.17.3
+certifi==2023.5.7
+chardet==5.1.0
+charset-normalizer==3.1.0
+idna==3.4
 macholib==1.16.2
 modulegraph==0.19.3
 Pillow==9.5.0
@@ -6,6 +10,8 @@ pip==23.1.2
 py2app==0.28.5
 pyobjc-core==9.1.1
 pyobjc-framework-Cocoa==9.1.1
+requests==2.30.0
 richxerox==1.0.1
 rumps==0.4.0
 setuptools==65.5.0
+urllib3==2.0.2

@@ -31,7 +31,7 @@ test -e ClippyCache && rm -rf ClippyCache
 echo "creating app file..."
 python3 setup.py py2app
 
-echo "App file created, sleeping for 1 second..."
+echo "App file commands finished, sleeping for 1 second..."
 sleep 1
 
 # create disk image
