@@ -3,14 +3,17 @@
 # $ ./build.sh
 #  !! current directory should have an assets/ folder with:
 #  !! AppIcon.icns, cup_10_pt.svg, installer_background.png
+# FUTURE:
 # login item:
 #   https://github.com/RhetTbull/textinator/blob/main/src/loginitems.py
-
-# TODO: if we auto-update (or manually re-download), keep ClippyCache somehow
+# CI w/ github action:
+#   https://github.com/EddieHubCommunity/LinkFree/blob/main/.github/workflows/release.yml
+# Auto-update:
+#   if we auto-update (or manually re-download), keep ClippyCache somehow
 
 from __future__ import annotations
 
-__version__ = "0.1.1"
+__version__ = "0.1.2"
 __author__ = "Eddie Rosenblum"
 __contact__ = "yaplore@gmail.com"
 __license__ = "GPLv3"
@@ -48,9 +51,12 @@ SERIALIZED_FP = f"{CACHE_DIR}/cached_items.pickle"
 EXEMPT_CACHE_FILETYPES = (".log", ".pickle")
 
 # releases
-DIST_LATEST_LINK = "https://github.com/rosenblu1/clippy/releases/latest"
-DIST_DOWNLOAD_ROUTE = "download"
-DIST_INSTALLER_NAME = f"{APP_NAME}-Installer.dmg"
+REPO_PATH = "rosenblu1/clippy/releases"
+INSTALLER_PATH = f"latest/download/{APP_NAME}-Installer.dmg"
+RELEASE_API_URL = f"https://api.github.com/repos/{REPO_PATH}"
+# TODO: make sure this doesn't print extra spaces vvvv
+RELEASE_DOWNLOAD_URL = f"https://github.com/{REPO_PATH}/{INSTALLER_PATH}"
+
 
 # logging
 LOG_TO_STDOUT = sys.argv is not None and "--stdout" in sys.argv
@@ -112,15 +118,12 @@ def config_script_directories():
 def get_newest_app_version() -> str | None:
     _log("attempting to get newest app version")
     try:
-        redirect = requests.get(
-            DIST_LATEST_LINK, timeout=RISKY_FUNC_CALL_TIME_LIMIT
-        ).url
+        resp = requests.get(RELEASE_API_URL, timeout=1.0)
+        latest_rel: dict = resp.json()[0]
+        return latest_rel.get("tag_name")[1:]
     except BaseException as e:
         _log(f"exception getting newest app version: {e}")
         return
-    if redirect is None:
-        return
-    return str(redirect).split("/")[-1][1:]
 
 
 def _log(printable: str) -> None:
@@ -519,7 +522,7 @@ class ClippyApp:
 
                         License: {__license__}
                         Newest version at:
-                        {DIST_LATEST_LINK}/{DIST_DOWNLOAD_ROUTE}/{DIST_INSTALLER_NAME}
+                        {RELEASE_DOWNLOAD_URL}
                         """,
         )
 
