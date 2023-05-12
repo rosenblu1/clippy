@@ -8,13 +8,15 @@
 #   https://github.com/RhetTbull/textinator/blob/main/src/loginitems.py
 # CI w/ github action:
 #   https://github.com/EddieHubCommunity/LinkFree/blob/main/.github/workflows/release.yml
+#   OR just go to actions page, then python-app.yml
 # Auto-update:
 #   if we auto-update (or manually re-download), keep ClippyCache somehow
 
 # TODO: split into files (and into src)
-# TODO: should I not have 2-level nesting x.y.z()??
-#       have gui (rumps.App) have its own methods? separate ALL GUI?
-#       id dispatch return tuple of num and invis?
+# TODO: app inherit from rumps.App -- should the heartbeat get the datamanager dirrectly
+# TODO: changetracker obj reference the func instead of the obj? same with out_obj?
+# TODO: id dispatch return tuple of num and invis? be a property with peek that otherwise gets next()? need to pass with iter()?
+# TODO: do we need persistent id?
 # TODO: update readme to tell how to build
 
 from __future__ import annotations
