@@ -11,6 +11,12 @@
 # Auto-update:
 #   if we auto-update (or manually re-download), keep ClippyCache somehow
 
+# TODO: split into files (and into src)
+# TODO: should I not have 2-level nesting x.y.z()??
+#       have gui (rumps.App) have its own methods? separate ALL GUI?
+#       id dispatch return tuple of num and invis?
+# TODO: update readme to tell how to build
+
 from __future__ import annotations
 
 __version__ = "0.1.2"
@@ -289,8 +295,8 @@ class TextClip(ClipItem):
         pass
 
     def __str__(self) -> str:
-        t = f"{self.title[:2]}...{self.title[-2:]}"
-        r = self.raw_data.keys()
+        t = f"{self.title[:2]}...{self.title[-2:]}" if self.title else ""
+        r = self.raw_data.keys() if self.raw_data else ""
         return f"{__class__.__name__}(title={t}, raw={r}, pinned={self.is_pinned})"
 
 
