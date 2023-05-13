@@ -12,19 +12,17 @@
 # Auto-update:
 #   if we auto-update (or manually re-download), keep ClippyCache somehow
 
-# TODO: split into files (and into src)
-# TODO: app inherit from rumps.App -- should the heartbeat get the datamanager dirrectly
+# TODO: app inherit from rumps.App -- should the heartbeat get the datamanager directly?
 # TODO: changetracker obj reference the func instead of the obj? same with out_obj?
-# TODO: id dispatch return tuple of num and invis? be a property with peek that otherwise gets next()? need to pass with iter()?
-# TODO: do we need persistent id?
-# TODO: update readme to tell how to build
+# TODO: make serializables an attribute? how to indicate version control?
+# TODO: id dispatch return tuple of num and invis? can have an __init__ instead of __iter__, don't pass with iter()
 
 from __future__ import annotations
 
-__version__ = "0.1.2"
+__version__ = "0.1.3"
 __author__ = "Eddie Rosenblum"
 __contact__ = "yaplore@gmail.com"
-__license__ = "GPLv3"
+__license__ = "MIT"
 
 import glob
 import logging
