@@ -12,6 +12,8 @@
 # Auto-update:
 #   if we auto-update (or manually re-download), keep ClippyCache somehow
 
+# TODO: update readme with requirements install
+# TODO: have app take a cache manager and button dispatcher?
 # TODO: app inherit from rumps.App -- should the heartbeat get the datamanager directly?
 # TODO: changetracker obj reference the func instead of the obj? same with out_obj?
 # TODO: make serializables an attribute? how to indicate version control?
@@ -268,7 +270,7 @@ class ClipItem(ABC):
 class TextClip(ClipItem):
     def recopy(self, sender: rumps.MenuItem = None):
         richxerox.copy(**self.raw_data, clear_first=True)
-        _log(f"re-copied ~{self.title}~")
+        _log(f"re-copied ~{self}~")
 
     def grab_clipboard() -> dict[str, str] | None:
         pasteall_made_safe = UnreliableFunctionCall(
@@ -841,7 +843,7 @@ def heartbeat(app: ClippyApp):
         if app.clip_manager.has_change_count_mismatch():
             app.clip_manager.update_change_count()
             if PROGRAM_CLIP_SET_EVENT.is_set():
-                app.clip_manager.update_buffers
+                app.clip_manager.update_buffers()
                 PROGRAM_CLIP_SET_EVENT.clear()
                 continue
             try:
