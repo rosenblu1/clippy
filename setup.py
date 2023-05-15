@@ -1,6 +1,5 @@
 from setuptools import setup
 
-from clippy import APP_NAME
 from clippy import __author__ as APP_AUTHOR
 from clippy import __contact__ as APP_CONTACT
 from clippy import __version__ as APP_VERSION
@@ -19,7 +18,7 @@ OPTIONS = {
 
 setup(
     app=APP,
-    name=APP_NAME,
+    name="Clippy",
     version=APP_VERSION,
     author=APP_AUTHOR,
     author_email=APP_CONTACT,

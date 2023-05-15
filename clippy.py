@@ -12,13 +12,6 @@
 # Auto-update:
 #   if we auto-update (or manually re-download), keep ClippyCache somehow
 
-# TODO: update readme with requirements install
-# TODO: have app take a cache manager and button dispatcher?
-# TODO: app inherit from rumps.App -- should the heartbeat get the datamanager directly?
-# TODO: changetracker obj reference the func instead of the obj? same with out_obj?
-# TODO: make serializables an attribute? how to indicate version control?
-# TODO: id dispatch return tuple of num and invis? can have an __init__ instead of __iter__, don't pass with iter()
-
 from __future__ import annotations
 
 __version__ = "0.1.3"
@@ -28,7 +21,6 @@ __license__ = "MIT"
 
 import glob
 import logging
-import math
 import multiprocessing
 import os
 import signal
@@ -50,49 +42,32 @@ from AppKit import NSBundle, NSPasteboard
 from PIL import Image, ImageGrab
 
 # file constants
-APP_NAME = "Clippy"
 WORKING_DIR = os.path.dirname(os.path.abspath(__file__))
-CACHE_DIR = f"{WORKING_DIR}/{APP_NAME}Cache"
+CACHE_DIR = f"{WORKING_DIR}/cache"
 APP_MENUBAR_ICON = f"{WORKING_DIR}/assets/cup_10_pt.svg"
 APP_FINDER_ICON = f"{WORKING_DIR}/assets/AppIcon.icns"
-SERIALIZED_FP = f"{CACHE_DIR}/cached_items.pickle"
-EXEMPT_CACHE_FILETYPES = (".log", ".pickle")
+CACHE_FILEPATH = f"{CACHE_DIR}/v{__version__}.cache"
 
 # releases
 REPO_PATH = "rosenblu1/clippy/releases"
-INSTALLER_PATH = f"latest/download/{APP_NAME}-Installer.dmg"
+INSTALLER_PATH = f"latest/download/Clippy-Installer.dmg"
 RELEASE_API_URL = f"https://api.github.com/repos/{REPO_PATH}"
-# TODO: make sure this doesn't print extra spaces vvvv
 RELEASE_DOWNLOAD_URL = f"https://github.com/{REPO_PATH}/{INSTALLER_PATH}"
-
 
 # logging
 LOG_TO_STDOUT = sys.argv is not None and "--stdout" in sys.argv
-LOG_FILE = f"{WORKING_DIR}/{APP_NAME}Log.log"
-CODEX_OPT = ("ascii", "ignore")
-
-# clipboard logic
-DEFAULT_CLIP_HISTORY = 25
-TIME_STEP = 1.0
-TARGET_IMAGE_AREA = 20_000
-PREFERRED_TITLE_ORDER_URI_S = ["public.file-url", "text"]
+LOG_FILE = f"{WORKING_DIR}/ClippyLog.log"
 
 # thread safety
 PROGRAM_CLIP_SET_EVENT = threading.Event()
 PROGRAM_CLIP_OPERATION = threading.Lock()
-LOCK_TIMEOUT = 1.0
-
-# UnreliableFunctionCall
-RISKY_FUNC_CALL_TRIES = 2
-RISKY_FUNC_CALL_TIME_LIMIT = 1.0
-RISKY_FUNC_REST_TIME = 0.1
 
 # Objective C values for GUI states
 GUI_ITEM_STATE_PINNED = -1
 GUI_ITEM_STATE_OFF = 0
 
 # handled signals that trigger quit
-QUIT_SIGNALS = [
+QUIT_SIGNALS = (
     signal.SIGTERM,
     signal.SIGHUP,
     signal.SIGPIPE,
@@ -100,7 +75,7 @@ QUIT_SIGNALS = [
     signal.SIGINT,
     signal.SIGQUIT,
     signal.SIGABRT,
-]
+)
 
 
 def config_script_for_background_use():
@@ -134,6 +109,11 @@ def get_newest_app_version() -> str | None:
         return
 
 
+def get_program_clip_lock() -> bool:
+    """Tries to acquire the PROGRAM_CLIP_OPERATION lock"""
+    return PROGRAM_CLIP_OPERATION.acquire(blocking=True, timeout=1.0)
+
+
 def _log(printable: str) -> None:
     """Log data to LOG_FILE in cache directory or to sys.stdout."""
     if LOG_TO_STDOUT:
@@ -150,7 +130,8 @@ def _log(printable: str) -> None:
 
 def _fmt_log_str(printable: str) -> str:
     """Formats timestamped, ASCII-safe string for _log"""
-    return f"{datetime.now()} {str(printable).encode(*CODEX_OPT).decode(*CODEX_OPT)}"
+    codex_opt = ("ascii", "ignore")
+    return f"{datetime.now()} {str(printable).encode(*codex_opt).decode(*codex_opt)}"
 
 
 def clip_setter(func):
@@ -160,7 +141,7 @@ def clip_setter(func):
     """
 
     def inner(*args, **kwargs):
-        if not PROGRAM_CLIP_OPERATION.acquire(blocking=True, timeout=LOCK_TIMEOUT):
+        if not get_program_clip_lock():
             _log(f"{func.__name__} failed to acquire lock, clip set not done")
             return
         func_ret = func(*args, **kwargs)
@@ -182,9 +163,9 @@ class UnreliableFunctionCall:
     def __init__(
         self,
         unsafe_func: Callable,
-        num_tries: int = RISKY_FUNC_CALL_TRIES,
-        time_per_try: float = RISKY_FUNC_CALL_TIME_LIMIT,
-        rest_bw_tries: float = RISKY_FUNC_REST_TIME,
+        num_tries: int = 2,
+        time_per_try: float = 1.0,
+        rest_bw_tries: float = 0.1,
     ):
         self.f = unsafe_func
         self.num_tries = num_tries
@@ -288,7 +269,7 @@ class TextClip(ClipItem):
         Pre-process the raw data recieved from the system clipboard
         and determine what the key/title should be in the menubar
         """
-        for uri in PREFERRED_TITLE_ORDER_URI_S:
+        for uri in ("public.file-url", "text"):
             if title := data.get(uri):
                 return title
         return None
@@ -332,7 +313,7 @@ class ImageClip(ClipItem):
         Return image dimensions that should be shown in the GUI.
         Width and height scaled to have the same target number of pixels.
         """
-        scale = (TARGET_IMAGE_AREA / (data.width * data.height)) ** 0.5
+        scale = (20_000 / (data.width * data.height)) ** 0.5
         return tuple(int(scale * dim) for dim in data.size)
 
     def remove_persistent_data(self):
@@ -346,45 +327,24 @@ class ImageClip(ClipItem):
 
 class InvisibleStringCounter:
     """
-    Used as an iterator to dispatch strings representing ID's
-    counting up from 1. ID strings are composed of control characters
+    Used as an iterator to dispatch tuples of (int, str) representing ID's
+    counting up from 1. Returned strings are composed of control characters
     whose ASCII code corresponds to digits in the ID number.
 
-    For example, an ID of 35 would correspond to the string chr(3)+chr(5).
+    For example, an ID of 35 returns (35, chr(3)+chr(5)).
 
     This iterator provides keys/titles for the GUI for items where we want
     to only show the icon (e.g. ImageClip items), but the menubar requires
-    a text title.
+    a text title that we don't want the user to see.
     """
 
-    def __iter__(self):
+    def __init__(self):
         self._counter = 0
-        return self
 
-    def __next__(self) -> str:
-        stringified = self.int_to_invisible_str(self._counter)
+    def __next__(self) -> tuple[str, int]:
+        prev_counter = self._counter
         self._counter += 1
-        return stringified
-
-    def cur_int_count(self) -> int:
-        """Current integer ID in the iterator"""
-        return self._counter
-
-    @staticmethod
-    def int_to_invisible_str(count: int) -> str:
-        """
-        Convert digits of integer to string of control characters
-        whose ASCII code are those digits.
-
-        e.g. 410 -> '\x04\x01\x00'
-        """
-        if not count:
-            return chr(0)
-        digits = [
-            (count // 10**power) % 10
-            for power in range(int(math.log10(count)), -1, -1)
-        ]
-        return "".join([chr(d) for d in digits])
+        return (prev_counter, "".join([chr(int(d)) for d in str(prev_counter)]))
 
 
 class ClipDataManager:
@@ -398,11 +358,15 @@ class ClipDataManager:
         # id dispatcher for items that don't have a title (images)
         self.id_dispatch = id_dispatch
         # hook into AppKit to see if we need to run a full check
-        self.change_tracker_obj = NSPasteboard.generalPasteboard()
-        self.change_count = self.change_tracker_obj.changeCount()
+        self._change_tracker = NSPasteboard.generalPasteboard()
+        self.app_change_count = self.sys_change_count
         # buffers for looping
         self.prev_txt_clip, self.cur_txt_clip = None, None
         self.prev_img_clip, self.cur_img_clip = None, None
+
+    @property
+    def sys_change_count(self) -> int:
+        return self._change_tracker.changeCount()
 
     @staticmethod
     @clip_setter
@@ -422,23 +386,23 @@ class ClipDataManager:
         Does not necessarily mean there is a new ClipItem to create -
         for example, clearing the clipboard will be reported as a change.
         """
-        new_count = self.change_tracker_obj.changeCount()
-        if self.change_count == new_count:
+        new_count = self.sys_change_count
+        if self.app_change_count == new_count:
             return False
-        _log(f"changeCount: app={self.change_count}, system={new_count}")
+        _log(f"changeCount: app={self.app_change_count}, system={new_count}")
         return True
 
     def update_change_count(self):
         """Set internal change_count to system's changeCount"""
-        self.change_count = self.change_tracker_obj.changeCount()
+        self.app_change_count = self.sys_change_count
 
     def get_new_item(self) -> ClipItem | None:
         """Try to return a ClipItem subclass from the system clipboard"""
         # text
         self.cur_txt_clip = TextClip.grab_clipboard()
         if (
-            self.prev_txt_clip != self.cur_txt_clip
-            and self.cur_txt_clip is not None
+            self.cur_txt_clip is not None
+            and self.prev_txt_clip != self.cur_txt_clip
             and (txt_title := TextClip.get_displayable_title(self.cur_txt_clip))
         ):
             self.prev_txt_clip = self.cur_txt_clip
@@ -449,55 +413,59 @@ class ClipDataManager:
 
         # images
         self.cur_img_clip = ImageClip.grab_clipboard()
-        if self.prev_img_clip != self.cur_img_clip and self.cur_img_clip is not None:
-            img_id = next(self.id_dispatch)
-            img_path = f"{CACHE_DIR}/{self.id_dispatch.cur_int_count()}.jpg"
+        if self.cur_img_clip is not None and self.prev_img_clip != self.cur_img_clip:
+            img_int_id, img_str_id = next(self.id_dispatch)
+            img_path = f"{CACHE_DIR}/{img_int_id}.jpg"
             ImageClip.save_persistent_data(self.cur_img_clip, img_path)
             img_dims = ImageClip.get_scaled_size(self.cur_img_clip)
             self.prev_img_clip = self.cur_img_clip
             return ImageClip(
-                title=img_id, persistent_id=img_path, icon=img_path, dimensions=img_dims
+                title=img_str_id,
+                persistent_id=img_path,
+                icon=img_path,
+                dimensions=img_dims,
             )
 
         _log("no new item found...")
         return None
 
 
-class ClippyApp:
-    """Main class that represents the current App state, composed with the rumps.App."""
+class ClippyApp(rumps.App):
+    """Main class that represents the current App state, inherits from rumps.App."""
 
     def __init__(
         self,
         name: str,
         icon: str,
-        clip_manager: ClipDataManager,
+        data_manager: ClipDataManager,
         history_len: int,
     ):
         """
-        ClippyApp's rumps.App GUI is stored in ClippyApp.gui,
-        while the deque of ClipItems is in ClippyApp.items.
+        ClippyApp is a subclass of rumps.App, and contains a
+        deque of ClipItems in ClippyApp.items.
 
         Initializing ClippyApp also performs setup like registering
         signal handlers, setting up main menu, unserializing, etc.
         """
-        self.gui = rumps.App(name=name, icon=icon, quit_button=None)
+        super().__init__(name=name, icon=icon, quit_button=None)
 
         # reserved keys for separators in the gui (can't copy these)
-        self._gui_placement_key = "\x06pins_above_nonpins_below_separator\x06"
-        self._bottom_bar_separator = "\x06bottom_bar_separator\x06"
+        c6 = chr(6)
+        self._gui_placement_key = f"{c6}pins_above_nonpins_below_separator{c6}"
+        self._bottom_bar_separator = f"{c6}bottom_bar_separator{c6}"
 
         self.history_len = history_len
         self.items: deque[ClipItem] = deque()
 
         # manager for getting, preprocessing, and returning new items
-        self.clip_manager = clip_manager
+        self.data_manager = data_manager
 
         # perform initialization methods
         self.register_signals(self.quit, QUIT_SIGNALS)
         self.setup_main_menu()
         self.try_unserialize_data()
         self.serialize_data(only_pinned=True)  # we might have non-pins from re-starting
-        self.clip_manager.clear_system_clipboard()
+        self.data_manager.clear_system_clipboard()
         self.cleanup_unreferenced_persistent_data()
 
     @staticmethod
@@ -508,7 +476,7 @@ class ClippyApp:
 
     def _add_bar_separator(self, this_separator_title: str):
         """Adds horizontal menu separator to GUI with key/title provided."""
-        self.gui.menu[this_separator_title] = rumps.separator
+        self.menu[this_separator_title] = rumps.separator
 
     def display_about_app(self, sender: rumps.MenuItem):
         newest_version = get_newest_app_version()
@@ -520,7 +488,7 @@ class ClippyApp:
             version_comment = f"The most current release is v{newest_version}."
         _log(f"displaying about info with {version_comment=}")
         rumps.alert(
-            title=f"{APP_NAME} v{__version__}",
+            title=f"Clippy v{__version__}",
             icon_path=APP_FINDER_ICON,
             message=f"""\
                         {version_comment}
@@ -565,10 +533,10 @@ class ClippyApp:
                 key="\b",
             )
         )
-        self.gui.menu.update(clear_button_anchor)
+        self.menu.update(clear_button_anchor)
 
         # about button
-        self.gui.menu.update(
+        self.menu.update(
             rumps.MenuItem(
                 title="About",
                 callback=self.display_about_app,
@@ -576,8 +544,8 @@ class ClippyApp:
         )
 
         # quit button
-        self.gui.menu.update(
-            rumps.MenuItem(title=f"Quit {self.gui.name}", callback=self.quit, key="q")
+        self.menu.update(
+            rumps.MenuItem(title=f"Quit {self.name}", callback=self.quit, key="q")
         )
 
     def add_clip_item_to_top(self, item: ClipItem):
@@ -614,9 +582,9 @@ class ClippyApp:
         # add item anchor to main gui menu
         # N.B. items grow outwards from both top and bottom of the placement key
         if item.is_pinned:
-            self.gui.menu.insert_before(self._gui_placement_key, item_anchor)
+            self.menu.insert_before(self._gui_placement_key, item_anchor)
         else:
-            self.gui.menu.insert_after(self._gui_placement_key, item_anchor)
+            self.menu.insert_after(self._gui_placement_key, item_anchor)
 
     def correct_items_length(self):
         """
@@ -682,7 +650,7 @@ class ClippyApp:
         # set pin on ClipItem
         item.is_pinned = not item.is_pinned
         # set pin (horizontal line) on main menu item
-        item_gui_pointer: rumps.MenuItem = self.gui.menu[item.title]
+        item_gui_pointer: rumps.MenuItem = self.menu[item.title]
         if item_gui_pointer.state == GUI_ITEM_STATE_PINNED:
             item_gui_pointer.state = GUI_ITEM_STATE_OFF
         else:
@@ -699,7 +667,7 @@ class ClippyApp:
         """
         persistent_ids = [item.persistent_id for item in self.items]
         for data in glob.iglob(f"{CACHE_DIR}/*"):
-            if data.endswith(EXEMPT_CACHE_FILETYPES):
+            if data == CACHE_FILEPATH:
                 continue
             if data not in persistent_ids:
                 os.remove(data)
@@ -728,7 +696,7 @@ class ClippyApp:
             if not keep_persistent_data:
                 item.remove_persistent_data()
             # remove that item from the app's main menu
-            del self.gui.menu[item.title]
+            del self.menu[item.title]
         except KeyError as e:
             _log(f"KeyError: failed to clear item {item}: {e}")
 
@@ -744,7 +712,7 @@ class ClippyApp:
         pinned items, and optionally preserving current system clipboard.
         """
         if clear_system_clip:
-            self.clip_manager.clear_system_clipboard()
+            self.data_manager.clear_system_clipboard()
         for item in list(self.items):
             if respect_pins and item.is_pinned:
                 continue
@@ -760,24 +728,24 @@ class ClippyApp:
         Also serializes ClippyApp's id_dispatch (InvisibleStringCounter)
         to ensure future ClipItems don't overwrite old ones.
         """
-        with open(SERIALIZED_FP, "wb") as f:
+        with open(CACHE_FILEPATH, "wb") as f:
             if only_pinned:
                 tmp_items = deque(filter(lambda i: i.is_pinned, self.items))
             else:
                 tmp_items = self.items
-            serializables = (self.clip_manager.id_dispatch, tmp_items)
-            self.gui.serializer.dump(serializables, f)
+            serializables = (self.data_manager.id_dispatch, tmp_items)
+            self.serializer.dump(serializables, f)
 
     def try_unserialize_data(self):
         """
         Attempts to unseralize and load cached ClipItems and
-        id_dispatch (InvisibleStringCounter) from SERIALIZED_FP.
+        id_dispatch (InvisibleStringCounter) from cache.
         """
         try:
-            with open(SERIALIZED_FP, "rb") as f:
+            with open(CACHE_FILEPATH, "rb") as f:
                 tmp_dispatch: InvisibleStringCounter | None = None
                 tmp_items: deque[ClipItem] | None = None
-                tmp_dispatch, tmp_items = self.gui.serializer.load(f)
+                tmp_dispatch, tmp_items = self.serializer.load(f)
                 for item in tmp_items:
                     if not item.persistent_id:
                         continue
@@ -786,7 +754,7 @@ class ClippyApp:
                         _log("Unserialization failed, cache cleared.")
                         return
                 _log(f"Unserialize: {tmp_dispatch=}")
-                self.clip_manager.id_dispatch = tmp_dispatch
+                self.data_manager.id_dispatch = tmp_dispatch
                 _log(f"Unserialize: {tmp_items=}")
                 for item in reversed(tmp_items):
                     self.add_clip_item_to_top(item)
@@ -796,7 +764,7 @@ class ClippyApp:
     def clear_cache(self):
         """Removes serialized/cached data"""
         try:
-            os.remove(SERIALIZED_FP)
+            os.remove(CACHE_FILEPATH)
         except FileNotFoundError:
             _log("no cache found, nothing to clear")
 
@@ -821,7 +789,8 @@ class ClippyApp:
 
 def heartbeat(app: ClippyApp):
     """
-    Main loop that runs in a thread separate from the GUI rumps.App.
+    Main loop that runs in a thread separate from the GUI rumps.App
+    to improve reliability.
 
     Checks if a clip operation (e.g. re-copy, clear) occured since
     last check and handles it by ignoring the increase reported by
@@ -831,23 +800,25 @@ def heartbeat(app: ClippyApp):
     add new ClipItem.
     """
     _log(f"starting non-gui on native thread {threading.get_native_id()}")
-    PROGRAM_CLIP_OPERATION.acquire(blocking=True, timeout=LOCK_TIMEOUT)
+    _ = get_program_clip_lock()
+
+    time_step = 1.0
 
     while True:
         if PROGRAM_CLIP_OPERATION.locked():
             PROGRAM_CLIP_OPERATION.release()
-        time.sleep(TIME_STEP)
-        if not PROGRAM_CLIP_OPERATION.acquire(blocking=True, timeout=LOCK_TIMEOUT):
+        time.sleep(time_step)
+        if not get_program_clip_lock():
             _log("non-gui thread failed to get lock")
 
-        if app.clip_manager.has_change_count_mismatch():
-            app.clip_manager.update_change_count()
+        if app.data_manager.has_change_count_mismatch():
+            app.data_manager.update_change_count()
             if PROGRAM_CLIP_SET_EVENT.is_set():
-                app.clip_manager.update_buffers()
+                app.data_manager.update_buffers()
                 PROGRAM_CLIP_SET_EVENT.clear()
                 continue
             try:
-                if new_item := app.clip_manager.get_new_item():
+                if new_item := app.data_manager.get_new_item():
                     app.add_clip_item_to_top(new_item)
             except BaseException as e:
                 _log(f"unknown exception in adding clip: {e}")
@@ -857,7 +828,7 @@ def main():
     """
     Entry point. Configures ClippyCache directory, ensures script run in
     the background, creates ClippyApp, creates and starts heartbeat thread,
-    and runs ClippyApp.gui.
+    and runs ClippyApp.
     """
     config_script_for_background_use()
     config_script_directories()
@@ -865,19 +836,19 @@ def main():
     _log(f"ClippyApp started on native thread {threading.get_native_id()}")
 
     app = ClippyApp(
-        name=APP_NAME,
+        name="Clippy",
         icon=APP_MENUBAR_ICON,
-        clip_manager=ClipDataManager(id_dispatch=iter(InvisibleStringCounter())),
-        history_len=DEFAULT_CLIP_HISTORY,
+        data_manager=ClipDataManager(id_dispatch=InvisibleStringCounter()),
+        history_len=25,
     )
 
     background_thread = threading.Thread(target=heartbeat, args=[app], daemon=True)
     background_thread.start()
 
     try:
-        app.gui.run()
+        app.run()
     except BaseException as e:
-        _log(f"unknown exception in app.gui.run: {e}")
+        _log(f"unknown exception in app.run: {e}")
 
 
 if __name__ == "__main__":

@@ -25,13 +25,13 @@ INSTALLER_NAME="Clippy-Installer"
 
 # clean old dmgs and cache
 test -f "$INSTALLER_NAME".dmg && rm "$INSTALLER_NAME".dmg
-test -e ClippyCache && rm -rf ClippyCache
+test -e cache && rm -rf cache
 
 # create .app file
 echo "creating app file..."
 python3 setup.py py2app
 
-echo "App file commands finished, sleeping for 1 second..."
+echo "App file commands finished (check for errors above!). Sleeping for 1 second..."
 sleep 1
 
 # create disk image
