@@ -137,7 +137,7 @@ def _fmt_log_str(printable: str) -> str:
 def clip_setter(func):
     """
     Decorator for methods that set the system clipboard. Gets program lock
-    and sets PROGRAM_CLIP_SET_EVENT for heartbeat function to handle.
+    so heartbeat function doesn't check when decorated func is in operation.
     """
 
     def inner(*args, **kwargs):
@@ -145,7 +145,6 @@ def clip_setter(func):
             _log(f"{func.__name__} failed to acquire lock, clip set not done")
             return
         func_ret = func(*args, **kwargs)
-        PROGRAM_CLIP_SET_EVENT.set()
         PROGRAM_CLIP_OPERATION.release()
         return func_ret
 
@@ -227,7 +226,6 @@ class ClipItem(ABC):
     title: str
     is_pinned: bool = False
     raw_data: dict[str, str] | None = None
-    persistent_id: Any = None
     icon: str | None = None
     dimensions: tuple[int, int] | None = None
 
@@ -251,7 +249,7 @@ class ClipItem(ABC):
 class TextClip(ClipItem):
     def recopy(self, sender: rumps.MenuItem = None):
         richxerox.copy(**self.raw_data, clear_first=True)
-        _log(f"re-copied ~{self}~")
+        _log(f"re-copied {self}")
 
     def grab_clipboard() -> dict[str, str] | None:
         pasteall_made_safe = UnreliableFunctionCall(
@@ -303,9 +301,9 @@ class ImageClip(ClipItem):
         return img
 
     @staticmethod
-    def save_persistent_data(data: Image.Image, persistent_id: str):
+    def save_persistent_data(data: Image.Image, img_path: str):
         """Save full image data to temp cache"""
-        data.save(persistent_id)
+        data.save(img_path)
 
     @staticmethod
     def get_scaled_size(data: Image.Image) -> tuple[int, int]:
@@ -346,6 +344,9 @@ class InvisibleStringCounter:
         self._counter += 1
         return (prev_counter, "".join([chr(int(d)) for d in str(prev_counter)]))
 
+    def __str__(self):
+        return f"{__class__.__name__}({self._counter=})"
+
 
 class ClipDataManager:
     """
@@ -374,10 +375,12 @@ class ClipDataManager:
         """Clears system clipboard"""
         richxerox.clear()
 
-    def update_buffers(self):
-        """Set internal buffers to current value of system clipboard"""
-        self.prev_txt_clip, self.cur_txt_clip = [TextClip.grab_clipboard()] * 2
-        self.prev_img_clip, self.cur_img_clip = [ImageClip.grab_clipboard()] * 2
+    def reset_buffers(self, txt_data: dict[str, str] = None, img_data: str = None):
+        """Set both previous and current text and image buffers to specified values"""
+        if txt_data:
+            self.prev_txt_clip, self.cur_txt_clip = [txt_data] * 2
+        if img_data:
+            self.prev_img_clip, self.cur_img_clip = [Image.open(img_data)] * 2
         _log("clip manager buffers updated")
 
     def has_change_count_mismatch(self) -> bool:
@@ -389,7 +392,7 @@ class ClipDataManager:
         new_count = self.sys_change_count
         if self.app_change_count == new_count:
             return False
-        _log(f"changeCount: app={self.app_change_count}, system={new_count}")
+        _log(f"has change: app={self.app_change_count}, system={new_count}")
         return True
 
     def update_change_count(self):
@@ -417,13 +420,11 @@ class ClipDataManager:
             img_int_id, img_str_id = next(self.id_dispatch)
             img_path = f"{CACHE_DIR}/{img_int_id}.jpg"
             ImageClip.save_persistent_data(self.cur_img_clip, img_path)
-            img_dims = ImageClip.get_scaled_size(self.cur_img_clip)
             self.prev_img_clip = self.cur_img_clip
             return ImageClip(
                 title=img_str_id,
-                persistent_id=img_path,
                 icon=img_path,
-                dimensions=img_dims,
+                dimensions=ImageClip.get_scaled_size(self.cur_img_clip),
             )
 
         _log("no new item found...")
@@ -606,18 +607,20 @@ class ClippyApp(rumps.App):
         """
         Returns rumps.MenuItem for ClipItem with a callback of re-copying
         item data to system clipboard and re-adding to ClippyApp so most recently
-        re-copied items are on top.
+        re-copied items that are not pinned are on top.
         """
 
         @clip_setter
-        def recopy_and_remove(sender: rumps.MenuItem):
+        def recopy_and_readd(sender: rumps.MenuItem):
             item.recopy()
+            self.data_manager.update_change_count()
+            self.data_manager.reset_buffers(txt_data=item.raw_data, img_data=item.icon)
             if not item.is_pinned:
                 self.add_clip_item_to_top(item)
 
         return rumps.MenuItem(
             title=item.title,
-            callback=recopy_and_remove,
+            callback=recopy_and_readd,
             icon=item.icon,
             dimensions=item.dimensions,
         )
@@ -665,11 +668,11 @@ class ClippyApp(rumps.App):
         Ensures data that's not part of a ClipItem the app knows
         about is cleaned up, i.e. un-pinned images not properly removed.
         """
-        persistent_ids = [item.persistent_id for item in self.items]
+        known_files = [item.icon for item in self.items]
         for data in glob.iglob(f"{CACHE_DIR}/*"):
             if data == CACHE_FILEPATH:
                 continue
-            if data not in persistent_ids:
+            if data not in known_files:
                 os.remove(data)
                 _log(f"removed stray data: {data}")
 
@@ -747,15 +750,15 @@ class ClippyApp(rumps.App):
                 tmp_items: deque[ClipItem] | None = None
                 tmp_dispatch, tmp_items = self.serializer.load(f)
                 for item in tmp_items:
-                    if not item.persistent_id:
+                    if not item.icon:
                         continue
-                    if not os.path.isfile(item.persistent_id):
+                    if not os.path.isfile(item.icon):
                         self.clear_cache()
-                        _log("Unserialization failed, cache cleared.")
+                        _log("Unserialization failed, bad cache cleared.")
                         return
-                _log(f"Unserialize: {tmp_dispatch=}")
+                _log(f"Unserialize id_dispatch: {tmp_dispatch}")
                 self.data_manager.id_dispatch = tmp_dispatch
-                _log(f"Unserialize: {tmp_items=}")
+                _log(f"Unserialize items: {[str(item) for item in tmp_items]}")
                 for item in reversed(tmp_items):
                     self.add_clip_item_to_top(item)
         except FileNotFoundError:
@@ -800,28 +803,26 @@ def heartbeat(app: ClippyApp):
     add new ClipItem.
     """
     _log(f"starting non-gui on native thread {threading.get_native_id()}")
-    _ = get_program_clip_lock()
 
     time_step = 1.0
 
     while True:
-        if PROGRAM_CLIP_OPERATION.locked():
-            PROGRAM_CLIP_OPERATION.release()
         time.sleep(time_step)
+
         if not get_program_clip_lock():
             _log("non-gui thread failed to get lock")
+            continue
 
         if app.data_manager.has_change_count_mismatch():
             app.data_manager.update_change_count()
-            if PROGRAM_CLIP_SET_EVENT.is_set():
-                app.data_manager.update_buffers()
-                PROGRAM_CLIP_SET_EVENT.clear()
-                continue
             try:
                 if new_item := app.data_manager.get_new_item():
                     app.add_clip_item_to_top(new_item)
             except BaseException as e:
                 _log(f"unknown exception in adding clip: {e}")
+
+        if PROGRAM_CLIP_OPERATION.locked():
+            PROGRAM_CLIP_OPERATION.release()
 
 
 def main():
