@@ -1,7 +1,9 @@
 # This workflow will install Python dependencies, format, and build with a single version of Python
 # For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-python
 
-name: Build Python App
+# USAGE: nothing will be run if commit message 
+
+name: Build and Release Python App
 
 on:
   push:
@@ -16,6 +18,13 @@ jobs:
 
     steps:
     - uses: actions/checkout@v3
+    - name: Set Release Flag
+      run: |
+        echo "DO_RELEASE=false" >> $GITHUB_ENV
+    - name: Update Release Flag
+      if: ${{ !contains(github.event.head_commit.message, '[RELEASE]') }}
+      run: |
+        echo "DO_RELEASE=" >> $GITHUB_ENV
     - name: Set up Python 3.11
       uses: actions/setup-python@v3
       with:
@@ -39,3 +48,21 @@ jobs:
         git add Clippy-Installer.dmg
         git commit -m "[WORKFLOW]: Build Python App"
         git push
+  release:
+    needs: build
+    runs-on: macos-latest
+    if: ${{ vars.DO_RELEASE == 'true' }}
+    steps:
+      - uses: actions/checkout@v3
+      - name: Create Release Tag
+        # !!! gets $VERSION_TAG from setup.py !!!
+        run: |
+          git tag ${{ env.VERSION_TAG }}
+      - name: Create Release
+        uses: "marvinpinto/action-automatic-releases@latest"
+        with:
+          repo_token: "${{ secrets.GITHUB_TOKEN }}"
+          prerelease: false
+          files: |
+            LICENSE.txt
+            *.dmg
