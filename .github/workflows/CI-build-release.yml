@@ -12,9 +12,8 @@ on:
 permissions: write-all
 
 jobs:
-  build:
+  set-release-flag:
     runs-on: macos-latest
-    if: ${{ !contains(github.event.head_commit.message, '[NOBUILD]') }}
 
     steps:
     - uses: actions/checkout@v3
@@ -25,6 +24,12 @@ jobs:
       if: ${{ !contains(github.event.head_commit.message, '[RELEASE]') }}
       run: |
         echo "DO_RELEASE=" >> $GITHUB_ENV
+  build:
+    runs-on: macos-latest
+    if: ${{ !contains(github.event.head_commit.message, '[NOBUILD]') }}
+
+    steps:
+    - uses: actions/checkout@v3
     - name: Set up Python 3.11
       uses: actions/setup-python@v3
       with:
