@@ -6,8 +6,6 @@ name: Build Python App
 on:
   push:
     branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
 
 permissions: write-all
 
@@ -39,5 +37,5 @@ jobs:
     - name: Push installer
       run: |
         git add Clippy-Installer.dmg
-        git commit -m "update installer"
+        git commit -m "WORKFLOW: update installer"
         git push
