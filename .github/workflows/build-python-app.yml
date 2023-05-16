@@ -36,3 +36,8 @@ jobs:
       run: |
         brew install create-dmg
         ./build.sh
+    - name: Push installer
+      run: |
+        git add Clippy-Installer.dmg
+        git commit -m "update installer"
+        git push
