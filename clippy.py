@@ -138,6 +138,8 @@ def clip_setter(func):
     """
     Decorator for methods that set the system clipboard. Gets program lock
     so heartbeat function doesn't check when decorated func is in operation.
+    
+    Used in lieu of built-in lock context manager so we can specify timeout. 
     """
 
     def inner(*args, **kwargs):
