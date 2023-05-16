@@ -23,7 +23,7 @@ jobs:
     - name: Update Release Flag
       if: ${{ contains(github.event.head_commit.message, '[RELEASE]') }}
       run: |
-        echo "DO_RELEASE=" >> $GITHUB_ENV
+        echo "DO_RELEASE=true" >> $GITHUB_ENV
   build:
     needs: set-release-flag
     runs-on: macos-latest
