@@ -7,7 +7,7 @@
 # login item:
 #   https://github.com/RhetTbull/textinator/blob/main/src/loginitems.py
 # Auto-update:
-#   if we auto-update (or manually re-download), keep ClippyCache somehow
+#   if we auto-update (or manually re-download), keep cache somehow
 # consideration for single clipitem class:
 #   https://github.com/p0deje/Maccy/blob/master/Maccy/HistoryMenuItem.swift
 
