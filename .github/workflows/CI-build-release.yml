@@ -66,3 +66,6 @@ jobs:
           files: |
             LICENSE.txt
             *.dmg
+      - name: Reset Release Flag
+        run: |
+          echo "DO_RELEASE=false" >> $GITHUB_ENV
