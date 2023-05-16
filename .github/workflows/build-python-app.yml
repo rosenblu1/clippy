@@ -34,4 +34,5 @@ jobs:
         black setup.py --verbose
     - name: Build Installer
       run: |
+        brew install create-dmg
         ./build.sh
