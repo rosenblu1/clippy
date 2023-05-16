@@ -6,11 +6,10 @@
 # FUTURE:
 # login item:
 #   https://github.com/RhetTbull/textinator/blob/main/src/loginitems.py
-# CI w/ github action:
-#   https://github.com/EddieHubCommunity/LinkFree/blob/main/.github/workflows/release.yml
-#   OR just go to actions page, then python-app.yml
 # Auto-update:
 #   if we auto-update (or manually re-download), keep ClippyCache somehow
+# consideration for single clipitem class:
+#   https://github.com/p0deje/Maccy/blob/master/Maccy/HistoryMenuItem.swift
 
 from __future__ import annotations
 
@@ -138,8 +137,8 @@ def clip_setter(func):
     """
     Decorator for methods that set the system clipboard. Gets program lock
     so heartbeat function doesn't check when decorated func is in operation.
-    
-    Used in lieu of built-in lock context manager so we can specify timeout. 
+
+    Used in lieu of built-in lock context manager so we can specify timeout.
     """
 
     def inner(*args, **kwargs):
