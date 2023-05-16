@@ -37,5 +37,5 @@ jobs:
     - name: Push installer
       run: |
         git add Clippy-Installer.dmg
-        git commit -m "WORKFLOW: update installer"
+        git commit -m "[WORKFLOW]: Build Python App"
         git push
