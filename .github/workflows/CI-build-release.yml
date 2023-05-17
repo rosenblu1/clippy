@@ -58,7 +58,7 @@ jobs:
         # !!! vers.txt written in setup.py, pushed by build job !!!
         run: |
           VERSION_TAG=${{ needs.build.outputs.output1 }}
-          git tag -a $VERSION_TAG "Clippy ${VERISON_TAG}"
+          git tag $VERSION_TAG
           git push origin --tags
       - name: Create Release
         uses: "marvinpinto/action-automatic-releases@latest"
