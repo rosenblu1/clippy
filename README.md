@@ -10,7 +10,7 @@ There are github actions set up to automatically rebuild the Installer on push t
 To create a new release, add \[RELEASE\] to your commit message. The version tag used will be the value of ```__version__``` in ```clippy.py```. The pipeline is: 
     - ```./build.sh``` is run, which runs ```python3 setup.py py2app``` and creates the .app file. 
     - ```setup.py``` imports ```clippy.__version__```
-    - ```setup.py``` sets a ```GITHUB_ENV``` variable to the imported version
+    - ```setup.py``` writes a temp ```vers.txt``` file with this version tag to be created
     - The ```CI-build-release.yml``` github workflow creates a tag for the version and makes a release with it!
 
 ## Building Locally
