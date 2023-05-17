@@ -2,6 +2,9 @@
 cache/
 ClippyCache/
 
+# used for github action
+vers.txt
+
 # testing
 experimental/
 

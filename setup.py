@@ -4,6 +4,12 @@ from clippy import __author__ as APP_AUTHOR
 from clippy import __contact__ as APP_CONTACT
 from clippy import __version__ as APP_VERSION
 
+VERS_FILE = "vers.txt"
+
+print(f"Writing to version file ({VERS_FILE}): v{APP_VERSION}")
+with open(VERS_FILE, "w") as f:
+    f.write(f"vers=v{APP_VERSION}")
+
 APP = ["clippy.py"]
 OPTIONS = {
     "iconfile": "assets/AppIcon.icns",

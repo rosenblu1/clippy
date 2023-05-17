@@ -18,7 +18,8 @@ jobs:
   build:
     runs-on: macos-latest
     if: ${{ !contains(github.event.head_commit.message, '[NOBUILD]') }}
-
+    outputs:
+      output1: ${{ steps.build-and-output-vers.outputs.vers }}
     steps:
     - uses: actions/checkout@v3
     - name: Set up Python 3.11
@@ -35,14 +36,16 @@ jobs:
         # stop the build if there are Python syntax errors or undefined names
         black clippy.py --verbose
         black setup.py --verbose
-    - name: Build Installer
+    - name: Build Installer and Output vers 
+      id: build-and-output-vers
       run: |
         brew install create-dmg
         ./build.sh
-    - name: Push installer and vers file written by steup.py
+        echo `cat vers.txt` >> $GITHUB_OUTPUT
+        rm -rf vers.txt
+    - name: Push installer
       run: |
         git add Clippy-Installer.dmg
-        git add vers.txt
         git commit -m "[WORKFLOW]: Build Python App"
         git push
   release:
@@ -54,7 +57,7 @@ jobs:
         if: ${{ env.DO_RELEASE == 'true' }}
         # !!! vers.txt written in setup.py, pushed by build job !!!
         run: |
-          VERSION_TAG=`cat vers.txt`
+          VERSION_TAG=${{ needs.build-and-output-vers.outputs.output1 }}
           git tag -a $VERSION_TAG "Clippy "$VERISON_TAG
           git push origin --tags
       - name: Create Release
