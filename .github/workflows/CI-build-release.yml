@@ -57,7 +57,7 @@ jobs:
         if: ${{ env.DO_RELEASE == 'true' }}
         # !!! vers.txt written in setup.py, pushed by build job !!!
         run: |
-          VERSION_TAG=${{ needs.build-and-output-vers.outputs.output1 }}
+          VERSION_TAG=${{ needs.build.outputs.output1 }}
           git tag -a $VERSION_TAG "Clippy "$VERISON_TAG
           git push origin --tags
       - name: Create Release
