@@ -8,7 +8,7 @@
 #   https://github.com/RhetTbull/textinator/blob/main/src/loginitems.py
 # Auto-update:
 #   if we auto-update (or manually re-download), keep cache somehow
-# consideration for single clipitem class:
+# consideration for a single clipitem class:
 #   https://github.com/p0deje/Maccy/blob/master/Maccy/HistoryMenuItem.swift
 
 from __future__ import annotations
