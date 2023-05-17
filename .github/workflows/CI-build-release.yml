@@ -39,11 +39,10 @@ jobs:
       run: |
         brew install create-dmg
         ./build.sh
-        echo $VERSION_TAG
-        echo ${{ env.VERSION_TAG }}
-    - name: Push installer
+    - name: Push installer and vers file written by steup.py
       run: |
         git add Clippy-Installer.dmg
+        git add vers.txt
         git commit -m "[WORKFLOW]: Build Python App"
         git push
   release:
@@ -53,10 +52,10 @@ jobs:
       - uses: actions/checkout@v3
       - name: Create Release Tag
         if: ${{ env.DO_RELEASE == 'true' }}
-        # !!! gets $VERSION_TAG from setup.py !!!
+        # !!! vers.txt written in setup.py, pushed by build job !!!
         run: |
-          echo $VERSION_TAG
-          git tag -a ${{ env.VERSION_TAG }} "Clippy "${{ env.VERSION_TAG }}
+          VERSION_TAG=`cat vers.txt`
+          git tag -a $VERSION_TAG "Clippy "$VERISON_TAG
           git push origin --tags
       - name: Create Release
         uses: "marvinpinto/action-automatic-releases@latest"
