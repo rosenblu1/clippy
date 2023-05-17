@@ -10,25 +10,15 @@ on:
     branches: [ "main" ]
 
 env:
-  DO_RELEASE: false
+  DO_RELEASE: ${{ contains(github.event.head_commit.message, '[RELEASE]') }}
 
 permissions: write-all
 
 jobs:
-  set-release-flag:
-    runs-on: macos-latest
-
-    steps:
-    - uses: actions/checkout@v3
-    - name: Update Release Flag
-      if: ${{ contains(github.event.head_commit.message, '[RELEASE]') }}
-      run: |
-        echo "DO_RELEASE=true" >> $GITHUB_ENV
   build:
-    needs: set-release-flag
     runs-on: macos-latest
     if: ${{ !contains(github.event.head_commit.message, '[NOBUILD]') }}
-
+    
     steps:
     - uses: actions/checkout@v3
     - name: Set up Python 3.11
@@ -73,6 +63,3 @@ jobs:
           files: |
             LICENSE.txt
             *.dmg
-      - name: Reset Release Flag
-        run: |
-          echo "DO_RELEASE=false" >> $GITHUB_ENV
