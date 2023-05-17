@@ -18,7 +18,7 @@ jobs:
   build:
     runs-on: macos-latest
     if: ${{ !contains(github.event.head_commit.message, '[NOBUILD]') }}
-    
+
     steps:
     - uses: actions/checkout@v3
     - name: Set up Python 3.11
@@ -54,7 +54,8 @@ jobs:
         # !!! gets $VERSION_TAG from setup.py !!!
         run: |
           echo $VERSION_TAG
-          git tag ${{ env.VERSION_TAG }}
+          git tag -a ${{ env.VERSION_TAG }} "Clippy ${{ env.VERSION_TAG }}"
+          git push origin --tags
       - name: Create Release
         uses: "marvinpinto/action-automatic-releases@latest"
         with:
