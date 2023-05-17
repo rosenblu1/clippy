@@ -9,6 +9,9 @@ on:
   push:
     branches: [ "main" ]
 
+env:
+  DO_RELEASE: false
+
 permissions: write-all
 
 jobs:
@@ -17,11 +20,6 @@ jobs:
 
     steps:
     - uses: actions/checkout@v3
-    - name: Set Release Flag
-      run: |
-        echo "DO_RELEASE=false" >> $GITHUB_ENV
-        echo "${{ vars.DO_RELEASE }}"
-        echo ${{ vars.DO_RELEASE }}
     - name: Update Release Flag
       if: ${{ contains(github.event.head_commit.message, '[RELEASE]') }}
       run: |
@@ -59,12 +57,13 @@ jobs:
   release:
     needs: build
     runs-on: macos-latest
-    if: ${{ vars.DO_RELEASE == 'true' }}
     steps:
       - uses: actions/checkout@v3
       - name: Create Release Tag
+        if: ${{ env.DO_RELEASE == 'true' }}
         # !!! gets $VERSION_TAG from setup.py !!!
         run: |
+          echo $VERSION_TAG
           git tag ${{ env.VERSION_TAG }}
       - name: Create Release
         uses: "marvinpinto/action-automatic-releases@latest"
