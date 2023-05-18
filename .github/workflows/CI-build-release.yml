@@ -30,6 +30,7 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install black
+        python -m pip install Pillow --no-binary :all:
         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
     - name: Format with black
       run: |
@@ -54,6 +55,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - name: Create Release
+        if: ${{ env.DO_RELEASE == 'true' }}
         uses: "marvinpinto/action-automatic-releases@latest"
         with:
           repo_token: "${{ secrets.GITHUB_TOKEN }}"
