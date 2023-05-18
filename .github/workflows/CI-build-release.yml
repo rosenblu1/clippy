@@ -19,7 +19,7 @@ jobs:
     runs-on: macos-latest
     if: ${{ !contains(github.event.head_commit.message, '[NOBUILD]') }}
     outputs:
-      output1: ${{ steps.build-and-output-vers.outputs.vers }}
+      app-version: ${{ steps.build-and-output-vers.outputs.vers }}
     steps:
     - uses: actions/checkout@v3
     - name: Set up Python 3.10
@@ -36,7 +36,7 @@ jobs:
         # stop the build if there are Python syntax errors or undefined names
         black clippy.py --verbose
         black setup.py --verbose
-    - name: Build Installer and Output vers 
+    - name: Build Installer and Output vers.txt 
       id: build-and-output-vers
       run: |
         brew install create-dmg
@@ -58,8 +58,8 @@ jobs:
         uses: "marvinpinto/action-automatic-releases@latest"
         with:
           repo_token: "${{ secrets.GITHUB_TOKEN }}"
-          automatic_release_tag: ${{ needs.build.outputs.output1 }}
-          title: "Clippy Installer"
+          automatic_release_tag: ${{ needs.build.outputs.app-version }}
+          title: "Clippy Installer ${{ needs.build.outputs.app-version }}"
           prerelease: false
           files: |
             LICENSE.txt

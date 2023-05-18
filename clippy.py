@@ -13,7 +13,7 @@
 
 from __future__ import annotations
 
-__version__ = "0.1.3"
+__version__ = "0.1.4"
 __author__ = "Eddie Rosenblum"
 __contact__ = "yaplore@gmail.com"
 __license__ = "MIT"
