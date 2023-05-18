@@ -53,18 +53,12 @@ jobs:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v3
-      #- name: Create Release Tag
-      #  if: ${{ env.DO_RELEASE == 'true' }}
-      #  # !!! vers.txt written in setup.py, pushed by build job !!!
-      #  run: |
-      #    VERSION_TAG=${{ needs.build.outputs.output1 }}
-      #    git tag $VERSION_TAG
-      #    git push origin --tags
       - name: Create Release
         uses: "marvinpinto/action-automatic-releases@latest"
         with:
           repo_token: "${{ secrets.GITHUB_TOKEN }}"
           automatic_release_tag: ${{ needs.build.outputs.output1 }}
+          title: "Clippy Installer"
           prerelease: false
           files: |
             LICENSE.txt
