@@ -1,15 +1,4 @@
 #!/Library/Frameworks/Python.framework/Versions/3.11/bin/python3
-# BUILD:
-# $ ./build.sh
-#  !! current directory should have an assets/ folder with:
-#  !! AppIcon.icns, cup_10_pt.svg, installer_background.png
-# FUTURE:
-# login item:
-#   https://github.com/RhetTbull/textinator/blob/main/src/loginitems.py
-# Auto-update:
-#   if we auto-update (or manually re-download), keep cache somehow
-# consideration for single clipitem class:
-#   https://github.com/p0deje/Maccy/blob/master/Maccy/HistoryMenuItem.swift
 
 from __future__ import annotations
 
@@ -17,6 +6,30 @@ __version__ = "0.1.4"
 __author__ = "Eddie Rosenblum"
 __contact__ = "yaplore@gmail.com"
 __license__ = "MIT"
+
+### BUILD ###
+# see README, but essentially:
+# $ ./build.sh
+#  !! current directory should have an assets/ folder with:
+#  !! AppIcon.icns, cup_10_pt.svg, installer_background.png
+
+### FUTURE ###
+# Feature question: should close/reopen keep unpinned?
+# Auto-update:
+#   if we auto-update (or manually re-download), keep cache somehow
+#       cache should have its own version (just major version like v1.cache, v2.cache),
+#       with breaking change in id_dispatch (InvisibleStringCounter) or ClipItem and
+#       its children upping the cache version.
+#   ultimately just have to write something that downloads a zip of the .app, re-caches
+#       with unpinned items, too, then copies it to the new app dir if compat cache ver
+#       and prompts user to restart. this then launches a non-daemon thread that listens
+#       for signals from main process (https://stackoverflow.com/questions/6932389/ - this
+#       should be sent repeateedly by a daemon thread in main) and when they stop, rename the
+#       old .app, move the new .app to /Applications, delete the old .app, run the new app,
+#       and die.
+#   Esky (https://github.com/cloudmatrix/esky/) is dead but can use for inspo
+# Login item:
+#   https://github.com/RhetTbull/textinator/blob/main/src/loginitems.py
 
 import glob
 import logging
