@@ -506,15 +506,15 @@ class ClippyApp(rumps.App):
             title=f"Clippy v{__version__}",
             icon_path=APP_FINDER_ICON,
             message=f"""\
-                        {version_comment}
+                {version_comment}
 
-                        Created by: {__author__}
-                        Contact: {__contact__}
+                Created by: {__author__}
+                Contact: {__contact__}
 
-                        License: {__license__}
-                        Newest version at:
-                        {RELEASE_DOWNLOAD_URL}
-                        """,
+                License: {__license__}
+                Newest version at:
+                {RELEASE_DOWNLOAD_URL}
+                """,
         )
 
     def setup_main_menu(self):
@@ -759,24 +759,26 @@ class ClippyApp(rumps.App):
         id_dispatch (InvisibleStringCounter) from cache.
         """
         try:
-            with open(CACHE_FILEPATH, "rb") as f:
-                tmp_dispatch: InvisibleStringCounter | None = None
-                tmp_items: deque[ClipItem] | None = None
-                tmp_dispatch, tmp_items = self.serializer.load(f)
-                for item in tmp_items:
-                    if not item.icon:
-                        continue
-                    if not os.path.isfile(item.icon):
-                        self.clear_cache()
-                        _log("Unserialization failed, bad cache cleared.")
-                        return
-                _log(f"Unserialize id_dispatch: {tmp_dispatch}")
-                self.data_manager.id_dispatch = tmp_dispatch
-                _log(f"Unserialize items: {[str(item) for item in tmp_items]}")
-                for item in reversed(tmp_items):
-                    self.add_clip_item_to_top(item)
+            cache_fd = open(CACHE_FILEPATH, "rb")
         except FileNotFoundError:
             _log("no cache found, nothing to unserialize")
+            return
+        tmp_dispatch: InvisibleStringCounter | None = None
+        tmp_items: deque[ClipItem] | None = None
+        tmp_dispatch, tmp_items = self.serializer.load(cache_fd)
+        for item in tmp_items:
+            if not item.icon:
+                continue
+            if not os.path.isfile(item.icon):
+                self.clear_cache()
+                _log("Unserialization failed, bad cache cleared.")
+                return
+        self.data_manager.id_dispatch = tmp_dispatch
+        _log(f"Unserialize id_dispatch: {tmp_dispatch}")
+        _log(f"Unserialize items: {[str(item) for item in tmp_items]}")
+        for item in reversed(tmp_items):
+            self.add_clip_item_to_top(item)
+        cache_fd.close()
 
     def clear_cache(self):
         """Removes serialized/cached data"""
