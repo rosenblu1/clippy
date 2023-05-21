@@ -811,11 +811,7 @@ def heartbeat(app: ClippyApp):
     Main loop that runs in a thread separate from the GUI rumps.App
     to improve reliability.
 
-    Checks if a clip operation (e.g. re-copy, clear) occured since
-    last check and handles it by ignoring the increase reported by
-    ClipDataManager.has_change_count_mismatch and updates buffers.
-
-    Then checks for "true" change in clipboard and tries to
+    Checks for change in clipboard and tries to
     add new ClipItem.
     """
     _log(f"starting non-gui on native thread {threading.get_native_id()}")
