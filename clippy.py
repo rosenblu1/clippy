@@ -16,7 +16,7 @@ __license__ = "MIT"
 ### FUTURE ###
 # Feature question: should close/reopen keep unpinned?
 # Auto-update:
-#   if we auto-update (or manually re-download), keep cache somehow
+#   if we auto-update (or manually re-download) - keep cache somehow
 #       cache should have its own version (just major version like v1.cache, v2.cache),
 #       with breaking change in id_dispatch (InvisibleStringCounter) or ClipItem and
 #       its children upping the cache version.
