@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-__version__ = "0.1.4"
+__version__ = "0.1.5"
 __author__ = "Eddie Rosenblum"
 __contact__ = "yaplore@gmail.com"
 __license__ = "MIT"
@@ -454,6 +454,7 @@ class ClippyApp(rumps.App):
         icon: str,
         data_manager: ClipDataManager,
         history_len: int,
+        template=None,
     ):
         """
         ClippyApp is a subclass of rumps.App, and contains a
@@ -462,7 +463,7 @@ class ClippyApp(rumps.App):
         Initializing ClippyApp also performs setup like registering
         signal handlers, setting up main menu, unserializing, etc.
         """
-        super().__init__(name=name, icon=icon, quit_button=None)
+        super().__init__(name=name, icon=icon, template=template, quit_button=None)
 
         # reserved keys for separators in the gui (can't copy these)
         c6 = chr(6)
@@ -526,6 +527,7 @@ class ClippyApp(rumps.App):
         <non-pinned items>  (most recent non-pins on top)
         ------------------- (_bottom_bar_separator)
         Clear All           --> [Keep pinned items, Remove everything]
+        Settings            --> [Toggle Icon Color]
         About
         Quit Clippy
         """
@@ -549,6 +551,24 @@ class ClippyApp(rumps.App):
             )
         )
         self.menu.update(clear_button_anchor)
+
+        # settings menu
+        settings_anchor = rumps.MenuItem(title="Settings")
+
+        def _toggle_template_mode(_: rumps.MenuItem = None):
+            _log("toggling icon template mode")
+            if self.template:
+                self.template = None
+                return
+            self.template = True
+
+        settings_anchor.update(
+            rumps.MenuItem(
+                title="Toggle Icon Color", callback=_toggle_template_mode, key="t"
+            )
+        )
+
+        self.menu.update(settings_anchor)
 
         # about button
         self.menu.update(
@@ -857,6 +877,7 @@ def main():
         icon=APP_MENUBAR_ICON,
         data_manager=ClipDataManager(id_dispatch=InvisibleStringCounter()),
         history_len=25,
+        template=True,
     )
 
     background_thread = threading.Thread(target=heartbeat, args=[app], daemon=True)
